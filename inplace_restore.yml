@@ -1,0 +1,66 @@
+---
+- name: 'Gather facts on all servers'
+  hosts:
+    - hacluster
+  become: true
+  gather_facts: true
+
+- hosts:
+    - hacluster
+  become: true
+  gather_facts: false
+  vars:
+    stolon_data_dir: /data/postgres/data/stolon/postgres
+    stolon_wal_dir: /data/postgres/wal/stolon
+    stolon_user: postgres
+    stolon_group: postgres
+  tasks:
+
+    - name: Stop stolon
+      systemd_service:
+        name: stolon-keeper.service
+        state: stopped
+
+    - name: Delete pgdata and pgwal
+      file:
+        name: '{{ item }}'
+        state: absent
+      loop:
+        - '{{ stolon_data_dir }}'
+        - '{{ stolon_wal_dir }}'
+
+    - name: Create pgdata and pgwal
+      file:
+        name: '{{ item }}'
+        state: directory
+        owner: '{{ stolon_user }}'
+        group: '{{ stolon_group }}'
+      loop:
+        - '{{ stolon_data_dir }}'
+        - '{{ stolon_wal_dir }}'
+
+    - name: Restore with stolon
+      become_user: postgres
+      shell: |
+        set -x
+        eval $(sed -e '/#/d;s/^STSENTINEL/export STOLONCTL/' /etc/sysconfig/stolon-stsentinel )
+        /usr/local/bin/stolonctl init {{ stolon_config | to_json | quote }}
+      vars:
+        stolon_cluster_name: stolon-cluster
+        walg_home: '/opt/wal-g'
+        walg_script_path: '{{ walg_home }}/scripts'
+        walg_data_restore_command: '{{ walg_script_path }}/scripts/restore.sh'
+        walg_wal_restore_command: '{{ walg_script_path }}/scripts/archive_restore.sh'
+        stolon_config:
+          initMode: pitr
+          pitrConfig:
+            dataRestoreCommand: '{{ walg_data_restore_command }}'
+            archiveRecoverySettings:
+              restoreCommand: '{{ walg_wal_restore_command }} %f'
+      run_once: true
+
+    - name: Start stolon
+      systemd_service:
+        name: stolon-keeper.service
+        state: started
+      throttle: 1
