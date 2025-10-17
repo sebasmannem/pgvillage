@@ -17,7 +17,7 @@
     pggroup: postgres
     restore_vars:
       PGRESTORE: '{{ restore_data_dir }}'
-      RESTORETARGETTIME: '2025-10-15 16:23:43'
+      #RESTORETARGETTIME: '2025-11-15 16:23:43'
       #RESTORETARGETXID: 
       #RESTORETARGETNAME: 
   tasks:
@@ -30,14 +30,15 @@
         group: '{{ pggroup }}'
 
     - name: Restore with wal-g
+      become_user: postgres
       command: '{{ walg_script_path }}/restore.sh'
       environment: '{{ restore_vars }}'
-      become_user: postgres
       vars:
         walg_home: '/opt/wal-g'
         walg_script_path: '{{ walg_home }}/scripts'
 
     - name: Start postgres
+      become_user: postgres
       command: '{{ stolon_pg_bin_path }}/pg_ctl start'
       environment:
         PGDATA: '{{ restore_data_dir }}'

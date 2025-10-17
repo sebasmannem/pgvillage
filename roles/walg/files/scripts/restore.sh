@@ -2,7 +2,7 @@
 set -ex
 
 recovery_conf() {
-	echo "recovery_target_action = promote"
+	echo "recovery_target_action = pause"
 	# Postgres biedt voor Point in time Recovery de mogelijkheid om een target xid, targettime of target name te gebruiken.
 	# Dit script behandelt $2 als input en bepaat welke van de drie het is.
 	# Deze functie zorgt dat de juiste info in postgresql.conf wordt opgenomen zodat recovery goed plaats vind.
@@ -13,6 +13,8 @@ recovery_conf() {
 		echo "recovery_target_xid = '$RESTORETARGETXID'"
 	elif [ "$RESTORETARGETNAME" ]; then
 		echo "recovery_target_name = '$RESTORETARGETNAME'"
+        else
+                echo "recovery_target = 'immediate'"
 	fi
 }
 
@@ -100,9 +102,10 @@ fi
 PGVERSION=$(cat "$PGDATA/PG_VERSION")
 if [ "0$PGVERSION" -ge 12 ]; then
 	touch "$PGRESTORE/recovery.signal"
+	touch "$PGRESTORE/standby.signal"
 	recovery_conf >>"$PGRESTORE/postgresql.conf"
 else
 	recovery_conf >>"$PGRESTORE/recovery.conf"
 fi
 
-"$PGBIN/pg_ctl" start -D "$PGRESTORE"
+#"$PGBIN/pg_ctl" start -D "$PGRESTORE"
