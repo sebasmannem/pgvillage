@@ -37,7 +37,7 @@ function pitr_settings() {
 	echo "listen_addresses='*'"
 	echo "log_directory='log'"
 	echo "port=5433"
-	echo "restore_command = '/opt/wal-g/scripts/archive_restore.sh %p'"
+	echo "restore_command = '/opt/wal-g/scripts/archive_restore.sh %f %p'"
 }
 
 # WAL-g config laden
